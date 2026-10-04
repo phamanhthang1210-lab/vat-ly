@@ -205,13 +205,15 @@
       if (!text) return '';
       return text.replace(/^Câu\s+\d+[\.:\s]*/i, '').trim();
     }
-// Hàm tự động xóa bỏ "Câu 2.", "Câu 2. C.", "C." cũ từ Google Sheet
-function cleanExplanation(text) {
-  if (!text) return '';
-  return text.replace(/^Câu\s*\d+[\.:\s]*([A-D]\.?)?\s*/i, '')
-             .replace(/^[A-D]\.[\s]*/i, '')
-             .trim();
-}
+
+    // Hàm tự động xóa bỏ "Câu 2.", "Câu 2. C.", "C." cũ từ Google Sheet
+    function cleanExplanation(text) {
+      if (!text) return '';
+      return text.replace(/^Câu\s*\d+[\.:\s]*([A-D]\.?)?\s*/i, '')
+                 .replace(/^[A-D]\.[\s]*/i, '')
+                 .trim();
+    }
+
     function shuffle(array) {
       const arr = [...array];
       for (let i = arr.length - 1; i > 0; i--) {
@@ -338,7 +340,7 @@ function cleanExplanation(text) {
       const container = document.getElementById("quiz-container");
       container.innerHTML = "";
 
-      // 1. Render Phần I: Đã lọc bỏ "Câu X." cũ
+      // 1. Render Phần I
       if (currentExam.p1.length > 0) {
         container.innerHTML += `<div class="section-header">PHẦN I: Câu trắc nghiệm nhiều phương án lựa chọn (${currentExam.p1.length} câu)</div>`;
         currentExam.p1.forEach((q, idx) => {
@@ -354,13 +356,15 @@ function cleanExplanation(text) {
             <div class="question-card">
               <div class="question-title">Câu ${idx + 1}: ${content}</div>
               <div class="options">${opts}</div>
-            <div class="explanation"><strong>Đáp án câu ${idx + 1}:</strong> ${cleanExplanation(q.explanation)}</div>
+              <div class="explanation" id="p1-exp-${idx}">
+                <strong>Đáp án câu ${idx + 1} (${String.fromCharCode(65 + q.answer)}):</strong> ${cleanExplanation(q.explanation)}
+              </div>
             </div>
           `;
         });
       }
 
-      // 2. Render Phần II: Đã lọc bỏ "Câu X." cũ
+      // 2. Render Phần II
       if (currentExam.p2.length > 0) {
         container.innerHTML += `<div class="section-header">PHẦN II: Câu trắc nghiệm Đúng/Sai (${currentExam.p2.length} câu - Giữ nguyên thứ tự)</div>`;
         currentExam.p2.forEach((q, idx) => {
@@ -380,13 +384,15 @@ function cleanExplanation(text) {
                 <tr><th>Lệnh hỏi / Nhận định</th><th>Đúng</th><th>Sai</th></tr>
                 ${rows}
               </table>
-              <div class="explanation" id="p2-exp-${idx}"><strong>Lời giải:</strong> ${q.explanation}</div>
+              <div class="explanation" id="p2-exp-${idx}">
+                <strong>Lời giải câu ${idx + 1}:</strong> ${cleanExplanation(q.explanation)}
+              </div>
             </div>
           `;
         });
       }
 
-      // 3. Render Phần III: Tách ngữ cảnh và đánh số mới
+      // 3. Render Phần III
       if (currentExam.p3.length > 0) {
         container.innerHTML += `<div class="section-header">PHẦN III: Câu trắc nghiệm trả lời ngắn (${currentExam.p3.length} câu)</div>`;
         currentExam.p3.forEach((q, idx) => {
@@ -409,7 +415,7 @@ function cleanExplanation(text) {
               </div>
               <div class="explanation" id="p3-exp-${idx}">
                 <strong>Đáp án đúng:</strong> ${q.answer} <br>
-                <strong>Lời giải:</strong> ${q.explanation}
+                <strong>Lời giải câu ${idx + 1}:</strong> ${cleanExplanation(q.explanation)}
               </div>
             </div>
           `;
@@ -433,7 +439,9 @@ function cleanExplanation(text) {
       const p1Weight = currentExam.p1.length > 0 ? (4.5 / currentExam.p1.length) : 0;
       currentExam.p1.forEach((q, idx) => {
         const selected = document.querySelector(`input[name="p1_${idx}"]:checked`);
-        document.getElementById(`p1-exp-${idx}`).style.display = "block";
+        const expElem = document.getElementById(`p1-exp-${idx}`);
+        if (expElem) expElem.style.display = "block";
+
         const correctLabel = document.getElementById(`p1-label-${idx}-${q.answer}`);
         if (correctLabel) correctLabel.classList.add("correct");
 
@@ -451,7 +459,9 @@ function cleanExplanation(text) {
       // 2. Chấm Phần II (4.0đ)
       const tfPoints = [0, 0.1, 0.25, 0.5, 1.0];
       currentExam.p2.forEach((q, idx) => {
-        document.getElementById(`p2-exp-${idx}`).style.display = "block";
+        const expElem = document.getElementById(`p2-exp-${idx}`);
+        if (expElem) expElem.style.display = "block";
+
         let correctCount = 0;
         q.items.forEach((_, iIdx) => {
           const selected = document.querySelector(`input[name="p2_${idx}_${iIdx}"]:checked`);
@@ -466,10 +476,12 @@ function cleanExplanation(text) {
       // 3. Chấm Phần III (1.5đ)
       const p3Weight = currentExam.p3.length > 0 ? (1.5 / currentExam.p3.length) : 0;
       currentExam.p3.forEach((q, idx) => {
-        document.getElementById(`p3-exp-${idx}`).style.display = "block";
+        const expElem = document.getElementById(`p3-exp-${idx}`);
+        if (expElem) expElem.style.display = "block";
+
         const inputElem = document.getElementById(`p3-input-${idx}`);
         const userAns = inputElem.value.trim().replace(',', '.');
-        const trueAns = q.answer.trim().replace(',', '.');
+        const trueAns = String(q.answer).trim().replace(',', '.');
 
         if (userAns !== '' && userAns === trueAns) {
           scoreP3 += p3Weight;
