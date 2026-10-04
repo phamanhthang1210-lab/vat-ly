@@ -3,15 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Luyện Tập Trắc Nghiệm Vật Lí</title>
+  <title>Luyện Thi Trắc Nghiệm Vật Lí</title>
 
-  <!-- KaTeX kết xuất công thức Vật lí -->
+  <!-- Thư viện KaTeX hiển thị công thức Vật lí -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
-
-  <!-- PapaParse: Thư viện siêu nhẹ đọc dữ liệu từ Google Sheets -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
     :root {
@@ -22,6 +19,7 @@
       --border: #e2e8f0;
       --success: #16a34a;
       --danger: #dc2626;
+      --section-bg: #e0e7ff;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -32,7 +30,7 @@
       padding: 20px;
     }
     .container {
-      max-width: 700px;
+      max-width: 760px;
       margin: 0 auto;
       background: var(--card);
       padding: 24px;
@@ -42,19 +40,39 @@
     h1 {
       text-align: center;
       color: var(--primary);
-      margin-bottom: 24px;
-      font-size: 1.5rem;
+      margin-bottom: 20px;
     }
-    .loading-text {
-      text-align: center;
-      color: #64748b;
-      font-style: italic;
-      padding: 20px;
+    .filter-box {
+      margin-bottom: 20px;
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .filter-box select {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    .section-header {
+      background: var(--section-bg);
+      color: #1e1b4b;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 24px 0 16px 0;
+      font-weight: bold;
+      font-size: 1.1rem;
     }
     .question-card {
       margin-bottom: 20px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border);
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #ffffff;
     }
     .question-title {
       font-weight: 600;
@@ -75,14 +93,45 @@
       transition: background 0.2s;
     }
     .option-label:hover {
-      background-color: #f1f5f9;
+      background-color: #f8fafc;
     }
     .option-label input {
       margin-right: 12px;
     }
+
+    /* Bảng Đúng / Sai của Phần 2 */
+    .tf-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .tf-table th, .tf-table td {
+      border: 1px solid var(--border);
+      padding: 10px;
+      text-align: left;
+    }
+    .tf-table th {
+      background-color: #f8fafc;
+      text-align: center;
+    }
+    .tf-table td.tf-choice {
+      text-align: center;
+      width: 70px;
+    }
+
+    /* Ô nhập trả lời ngắn của Phần 3 */
+    .short-input {
+      padding: 10px 14px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      font-size: 1rem;
+      width: 220px;
+      margin-top: 8px;
+    }
+
     .explanation {
       display: none;
-      margin-top: 10px;
+      margin-top: 12px;
       padding: 10px;
       background-color: #eff6ff;
       border-left: 4px solid var(--primary);
@@ -100,14 +149,12 @@
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 20px;
+      margin-top: 16px;
     }
-    .btn:hover {
-      opacity: 0.9;
-    }
-    .btn:disabled {
-      background-color: #94a3b8;
-      cursor: not-allowed;
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary {
+      background-color: #64748b;
+      margin-top: 10px;
     }
     .result-box {
       display: none;
@@ -121,7 +168,6 @@
     .correct {
       background-color: #dcfce7 !important;
       border-color: var(--success) !important;
-      font-weight: 600;
     }
     .wrong {
       background-color: #fee2e2 !important;
@@ -132,92 +178,224 @@
 <body>
 
   <div class="container">
-    <h1>Ôn Tập Trắc Nghiệm Vật Lí</h1>
+    <h1>Luyện Thi Trắc Nghiệm Vật Lí</h1>
+
+    <div class="filter-box" id="filter-wrapper" style="display: none;">
+      <label for="topic-select"><strong>Chủ đề:</strong></label>
+      <select id="topic-select" onchange="loadExam()"></select>
+    </div>
+
     <div id="result" class="result-box"></div>
     <div id="quiz-container">
-      <div class="loading-text">Đang tải đề thi từ Google Sheets...</div>
+      <div style="text-align:center; padding:20px; color:#64748b;">Đang tải dữ liệu đề thi...</div>
     </div>
+
     <button id="submit-btn" class="btn" onclick="submitQuiz()" style="display: none;">Nộp bài</button>
+    <button id="retry-btn" class="btn btn-secondary" onclick="loadExam()" style="display: none;">Làm đề mới (Đảo ngẫu nhiên)</button>
   </div>
 
   <script>
-    // ==============================================================
-    // THAY MÃ SHEET_ID CỦA BẠN VÀO DÒNG DƯỚI ĐÂY:
-    // ==============================================================
     const SHEET_ID = "1HLXGp5PWCqUB6oSeauhyoOmjbbEeauLgYkQa0o3teGo";
 
-    // Đường link trích xuất dữ liệu trực tiếp từ Google Sheet
-    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+    let rawQuestions = [];
+    let currentExam = { p1: [], p2: [], p3: [] };
 
-    let quizData = [];
-
-    // Tự động tải dữ liệu từ Google Sheets khi mở web
-    function fetchQuestionsFromGoogleSheet() {
-      Papa.parse(SHEET_URL, {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-          // Ánh xạ đáp án chữ (A, B, C, D) thành số (0, 1, 2, 3)
-          const answerMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
-
-          quizData = results.data.map(row => {
-            const rawAns = (row['Đáp án đúng'] || '').trim().toUpperCase();
-            return {
-              question: row['Câu hỏi'] || '',
-              options: [
-                row['Đáp án A'] || '',
-                row['Đáp án B'] || '',
-                row['Đáp án C'] || '',
-                row['Đáp án D'] || ''
-              ],
-              answer: answerMap[rawAns] !== undefined ? answerMap[rawAns] : 0,
-              explanation: row['Lời giải'] || 'Chưa có lời giải chi tiết.'
-            };
-          }).filter(q => q.question !== ''); // Lọc bỏ dòng trống
-
-          renderQuiz();
-        },
-        error: function(err) {
-          document.getElementById("quiz-container").innerHTML = 
-            "<div style='color:red; text-align:center;'>Không thể tải câu hỏi từ Google Sheets. Vui lòng kiểm tra lại quyền chia sẻ file!</div>";
-        }
-      });
+    // Thuật toán xáo trộn ngẫu nhiên
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
     }
 
-    // Hiển thị câu hỏi ra màn hình
-    function renderQuiz() {
+    // Tải dữ liệu từ Google Sheets
+    function fetchQuestions() {
+      const script = document.createElement('script');
+      script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=responseHandler:onSheetDataLoaded`;
+      script.onerror = function() {
+        document.getElementById("quiz-container").innerHTML = 
+          "<div style='color:red; text-align:center;'>Không thể kết nối với Google Sheets. Vui lòng kiểm tra lại kết nối mạng!</div>";
+      };
+      document.body.appendChild(script);
+    }
+
+    // Xử lý dữ liệu trả về theo chỉ số cột (không sợ lệch tên tiêu đề)
+    function onSheetDataLoaded(json) {
+      if (!json || json.status !== 'ok') {
+        document.getElementById("quiz-container").innerHTML = 
+          "<div style='color:red; text-align:center;'>Lỗi đọc dữ liệu Google Sheets.</div>";
+        return;
+      }
+
+      const rows = json.table.rows;
+      const getVal = (row, i) => {
+        if (!row.c || !row.c[i]) return '';
+        const cell = row.c[i];
+        if (cell.f !== undefined && cell.f !== null) return String(cell.f).trim();
+        if (cell.v !== undefined && cell.v !== null) return String(cell.v).trim();
+        return '';
+      };
+
+      // Đọc trực tiếp: Cột 0: Chủ đề | 1: Phần | 2: Câu hỏi | 3: A/a | 4: B/b | 5: C/c | 6: D/d | 7: Đáp án | 8: Lời giải
+      rawQuestions = rows.map(r => ({
+        'Chủ đề': getVal(r, 0) || 'Mặc định',
+        'Phần': getVal(r, 1),
+        'Câu hỏi': getVal(r, 2),
+        'A / Ý a': getVal(r, 3),
+        'B / Ý b': getVal(r, 4),
+        'C / Ý c': getVal(r, 5),
+        'D / Ý d': getVal(r, 6),
+        'Đáp án đúng': getVal(r, 7),
+        'Lời giải': getVal(r, 8)
+      })).filter(q => q['Câu hỏi'] !== '');
+
+      buildTopics();
+      loadExam();
+    }
+
+    function buildTopics() {
+      const topicSelect = document.getElementById("topic-select");
+      topicSelect.innerHTML = "";
+      const topics = [...new Set(rawQuestions.map(q => q['Chủ đề']))];
+      topics.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t;
+        topicSelect.appendChild(opt);
+      });
+      document.getElementById("filter-wrapper").style.display = "flex";
+    }
+
+    function loadExam() {
+      document.getElementById("result").style.display = "none";
+      const submitBtn = document.getElementById("submit-btn");
+      submitBtn.disabled = false;
+      submitBtn.innerText = "Nộp bài";
+      submitBtn.style.display = "block";
+      document.getElementById("retry-btn").style.display = "none";
+
+      const selectedTopic = document.getElementById("topic-select").value;
+      const topicQuestions = rawQuestions.filter(q => q['Chủ đề'] === selectedTopic);
+
+      let p1 = topicQuestions.filter(q => q['Phần'] === '1');
+      let p2 = topicQuestions.filter(q => q['Phần'] === '2');
+      let p3 = topicQuestions.filter(q => q['Phần'] === '3');
+
+      // 1. PHẦN 1: Đảo thứ tự câu và đảo đáp án
+      const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+      currentExam.p1 = shuffle(p1).map(q => {
+        const originalCorrectIndex = letterMap[(q['Đáp án đúng'] || 'A').toUpperCase()] || 0;
+        const rawOptions = [q['A / Ý a'], q['B / Ý b'], q['C / Ý c'], q['D / Ý d']];
+        
+        let mappedOptions = rawOptions.map((text, idx) => ({ text, isCorrect: idx === originalCorrectIndex }));
+        mappedOptions = shuffle(mappedOptions);
+
+        return {
+          question: q['Câu hỏi'],
+          options: mappedOptions.map(o => o.text),
+          answer: mappedOptions.findIndex(o => o.isCorrect),
+          explanation: q['Lời giải']
+        };
+      });
+
+      // 2. PHẦN 2: Giữ nguyên thứ tự câu và các ý
+      currentExam.p2 = p2.map(q => {
+        const rawAns = (q['Đáp án đúng'] || '').replace(/\s+/g, '').toUpperCase().split(/[,;\-]/);
+        return {
+          question: q['Câu hỏi'],
+          items: [q['A / Ý a'], q['B / Ý b'], q['C / Ý c'], q['D / Ý d']],
+          answers: [
+            rawAns[0] === 'Đ' || rawAns[0] === 'D',
+            rawAns[1] === 'Đ' || rawAns[1] === 'D',
+            rawAns[2] === 'Đ' || rawAns[2] === 'D',
+            rawAns[3] === 'Đ' || rawAns[3] === 'D'
+          ],
+          explanation: q['Lời giải']
+        };
+      });
+
+      // 3. PHẦN 3: Đảo thứ tự câu hỏi
+      currentExam.p3 = shuffle(p3).map(q => ({
+        question: q['Câu hỏi'],
+        answer: q['Đáp án đúng'],
+        explanation: q['Lời giải']
+      }));
+
+      renderUI();
+    }
+
+    function renderUI() {
       const container = document.getElementById("quiz-container");
       container.innerHTML = "";
 
-      quizData.forEach((q, index) => {
-        const qDiv = document.createElement("div");
-        qDiv.className = "question-card";
-
-        let optionsHtml = "";
-        q.options.forEach((opt, optIndex) => {
-          optionsHtml += `
-            <label class="option-label" id="opt-label-${index}-${optIndex}">
-              <input type="radio" name="question-${index}" value="${optIndex}">
-              <span>${opt}</span>
+      // Vẽ Phần I
+      if (currentExam.p1.length > 0) {
+        container.innerHTML += `<div class="section-header">PHẦN I: Câu trắc nghiệm nhiều phương án lựa chọn (${currentExam.p1.length} câu)</div>`;
+        currentExam.p1.forEach((q, idx) => {
+          let opts = q.options.map((opt, oIdx) => `
+            <label class="option-label" id="p1-label-${idx}-${oIdx}">
+              <input type="radio" name="p1_${idx}" value="${oIdx}">
+              <span>${String.fromCharCode(65 + oIdx)}. ${opt}</span>
             </label>
+          `).join('');
+
+          container.innerHTML += `
+            <div class="question-card">
+              <div class="question-title">Câu ${idx + 1}: ${q.question}</div>
+              <div class="options">${opts}</div>
+              <div class="explanation" id="p1-exp-${idx}"><strong>Lời giải:</strong> ${q.explanation}</div>
+            </div>
           `;
         });
+      }
 
-        qDiv.innerHTML = `
-          <div class="question-title">${q.question}</div>
-          <div class="options">${optionsHtml}</div>
-          <div class="explanation" id="exp-${index}">
-            <strong>Lời giải:</strong> ${q.explanation}
-          </div>
-        `;
-        container.appendChild(qDiv);
-      });
+      // Vẽ Phần II
+      if (currentExam.p2.length > 0) {
+        container.innerHTML += `<div class="section-header">PHẦN II: Câu trắc nghiệm Đúng/Sai (${currentExam.p2.length} câu - Giữ nguyên thứ tự)</div>`;
+        currentExam.p2.forEach((q, idx) => {
+          let rows = q.items.map((item, iIdx) => `
+            <tr>
+              <td><strong>${String.fromCharCode(97 + iIdx)})</strong> ${item}</td>
+              <td class="tf-choice"><input type="radio" name="p2_${idx}_${iIdx}" value="true"></td>
+              <td class="tf-choice"><input type="radio" name="p2_${idx}_${iIdx}" value="false"></td>
+            </tr>
+          `).join('');
 
-      // Hiển thị nút nộp bài sau khi đã tải xong câu hỏi
-      document.getElementById("submit-btn").style.display = "block";
+          container.innerHTML += `
+            <div class="question-card" id="p2-card-${idx}">
+              <div class="question-title">Câu ${idx + 1}: ${q.question}</div>
+              <table class="tf-table">
+                <tr><th>Lệnh hỏi / Nhận định</th><th>Đúng</th><th>Sai</th></tr>
+                ${rows}
+              </table>
+              <div class="explanation" id="p2-exp-${idx}"><strong>Lời giải:</strong> ${q.explanation}</div>
+            </div>
+          `;
+        });
+      }
 
-      // Kích hoạt KaTeX kết xuất công thức Vật lí
+      // Vẽ Phần III
+      if (currentExam.p3.length > 0) {
+        container.innerHTML += `<div class="section-header">PHẦN III: Câu trắc nghiệm trả lời ngắn (${currentExam.p3.length} câu)</div>`;
+        currentExam.p3.forEach((q, idx) => {
+          container.innerHTML += `
+            <div class="question-card" id="p3-card-${idx}">
+              <div class="question-title">Câu ${idx + 1}: ${q.question}</div>
+              <div>
+                <strong>Đáp án của bạn: </strong>
+                <input type="text" class="short-input" id="p3-input-${idx}" placeholder="Nhập số/kết quả...">
+              </div>
+              <div class="explanation" id="p3-exp-${idx}">
+                <strong>Đáp án đúng:</strong> ${q.answer} <br>
+                <strong>Lời giải:</strong> ${q.explanation}
+              </div>
+            </div>
+          `;
+        });
+      }
+
       if (window.renderMathInElement) {
         renderMathInElement(container, {
           delimiters: [
@@ -228,45 +406,81 @@
       }
     }
 
-    // Chấm điểm và hiển thị kết quả
     function submitQuiz() {
-      let score = 0;
+      let scoreP1 = 0, scoreP2 = 0, scoreP3 = 0;
 
-      quizData.forEach((q, index) => {
-        const selected = document.querySelector(`input[name="question-${index}"]:checked`);
-        const expDiv = document.getElementById(`exp-${index}`);
-        if (expDiv) expDiv.style.display = "block";
-
-        const correctLabel = document.getElementById(`opt-label-${index}-${q.answer}`);
+      // 1. Chấm Phần I (4.5 điểm)
+      const p1Weight = currentExam.p1.length > 0 ? (4.5 / currentExam.p1.length) : 0;
+      currentExam.p1.forEach((q, idx) => {
+        const selected = document.querySelector(`input[name="p1_${idx}"]:checked`);
+        document.getElementById(`p1-exp-${idx}`).style.display = "block";
+        const correctLabel = document.getElementById(`p1-label-${idx}-${q.answer}`);
         if (correctLabel) correctLabel.classList.add("correct");
 
         if (selected) {
           const val = parseInt(selected.value);
           if (val === q.answer) {
-            score++;
+            scoreP1 += p1Weight;
           } else {
-            const wrongLabel = document.getElementById(`opt-label-${index}-${val}`);
+            const wrongLabel = document.getElementById(`p1-label-${idx}-${val}`);
             if (wrongLabel) wrongLabel.classList.add("wrong");
           }
         }
       });
 
+      // 2. Chấm Phần II (4.0 điểm - Chuẩn barem Bộ GD)
+      const tfPoints = [0, 0.1, 0.25, 0.5, 1.0];
+      currentExam.p2.forEach((q, idx) => {
+        document.getElementById(`p2-exp-${idx}`).style.display = "block";
+        let correctCount = 0;
+        q.items.forEach((_, iIdx) => {
+          const selected = document.querySelector(`input[name="p2_${idx}_${iIdx}"]:checked`);
+          if (selected) {
+            const userVal = selected.value === 'true';
+            if (userVal === q.answers[iIdx]) correctCount++;
+          }
+        });
+        scoreP2 += tfPoints[correctCount];
+      });
+
+      // 3. Chấm Phần III (1.5 điểm)
+      const p3Weight = currentExam.p3.length > 0 ? (1.5 / currentExam.p3.length) : 0;
+      currentExam.p3.forEach((q, idx) => {
+        document.getElementById(`p3-exp-${idx}`).style.display = "block";
+        const inputElem = document.getElementById(`p3-input-${idx}`);
+        const userAns = inputElem.value.trim().replace(',', '.');
+        const trueAns = q.answer.trim().replace(',', '.');
+
+        if (userAns !== '' && userAns === trueAns) {
+          scoreP3 += p3Weight;
+          inputElem.style.borderColor = "var(--success)";
+          inputElem.style.backgroundColor = "#dcfce7";
+        } else {
+          inputElem.style.borderColor = "var(--danger)";
+          inputElem.style.backgroundColor = "#fee2e2";
+        }
+      });
+
+      const totalScore = (scoreP1 + scoreP2 + scoreP3).toFixed(2);
       const resultBox = document.getElementById("result");
       resultBox.style.display = "block";
-      const isPassed = score >= quizData.length / 2;
-      resultBox.style.backgroundColor = isPassed ? "#dcfce7" : "#fee2e2";
-      resultBox.style.color = isPassed ? "#15803d" : "#b91c1c";
-      resultBox.innerHTML = `Bạn đạt: ${score} / ${quizData.length} điểm`;
+      resultBox.style.backgroundColor = totalScore >= 5.0 ? "#dcfce7" : "#fee2e2";
+      resultBox.style.color = totalScore >= 5.0 ? "#15803d" : "#b91c1c";
+      resultBox.innerHTML = `
+        Tổng điểm: ${totalScore} / 10.00 điểm<br>
+        <span style="font-size:0.95rem; font-weight:normal;">
+          (Phần I: ${scoreP1.toFixed(2)}đ | Phần II: ${scoreP2.toFixed(2)}đ | Phần III: ${scoreP3.toFixed(2)}đ)
+        </span>
+      `;
 
       const submitBtn = document.getElementById("submit-btn");
       submitBtn.disabled = true;
       submitBtn.innerText = "Đã hoàn thành";
-
-      document.querySelectorAll('input[type="radio"]').forEach(input => input.disabled = true);
+      document.getElementById("retry-btn").style.display = "block";
+      document.querySelectorAll('input').forEach(i => i.disabled = true);
     }
 
-    // Bắt đầu tải dữ liệu khi trang mở ra
-    window.onload = fetchQuestionsFromGoogleSheet;
+    window.onload = fetchQuestions;
   </script>
 
 </body>
