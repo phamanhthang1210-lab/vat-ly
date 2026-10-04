@@ -30,7 +30,7 @@
       padding: 20px;
     }
     .container {
-      max-width: 760px;
+      max-width: 780px;
       margin: 0 auto;
       background: var(--card);
       padding: 24px;
@@ -99,7 +99,7 @@
       margin-right: 12px;
     }
 
-    /* Bảng Đúng / Sai của Phần 2 */
+    /* Bảng Đúng / Sai Phần 2 */
     .tf-table {
       width: 100%;
       border-collapse: collapse;
@@ -119,7 +119,7 @@
       width: 70px;
     }
 
-    /* Ô nhập trả lời ngắn của Phần 3 */
+    /* Ô nhập trả lời ngắn Phần 3 */
     .short-input {
       padding: 10px 14px;
       border: 2px solid var(--border);
@@ -130,13 +130,12 @@
     }
 
     .explanation {
-      display: none;
       margin-top: 12px;
-      padding: 10px;
+      padding: 12px;
       background-color: #eff6ff;
       border-left: 4px solid var(--primary);
       border-radius: 4px;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
     }
     .btn {
       display: block;
@@ -200,13 +199,13 @@
     let rawQuestions = [];
     let currentExam = { p1: [], p2: [], p3: [] };
 
-    // Hàm gọt bỏ chữ "Câu X." cũ để không bị lặp
+    // Làm sạch tiêu đề câu hỏi (loại bỏ "Câu X.")
     function cleanQuestionTitle(text) {
       if (!text) return '';
       return text.replace(/^Câu\s+\d+[\.:\s]*/i, '').trim();
     }
 
-    // Hàm tự động xóa bỏ "Câu 2.", "Câu 2. C.", "C." cũ từ Google Sheet
+    // Làm sạch lời giải (loại bỏ tiền tố "Câu X. C." hoặc "A.")
     function cleanExplanation(text) {
       if (!text) return '';
       return text.replace(/^Câu\s*\d+[\.:\s]*([A-D]\.?)?\s*/i, '')
@@ -221,6 +220,17 @@
         [arr[i], arr[j]] = [arr[j], arr[i]];
       }
       return arr;
+    }
+
+    function renderMath() {
+      if (window.renderMathInElement) {
+        renderMathInElement(document.getElementById("quiz-container"), {
+          delimiters: [
+            { left: "$$", right: "$$", display: true },
+            { left: "$", right: "$", display: false }
+          ]
+        });
+      }
     }
 
     function fetchQuestions() {
@@ -293,7 +303,7 @@
       let p2 = topicQuestions.filter(q => q['Phần'] === '2');
       let p3 = topicQuestions.filter(q => q['Phần'] === '3');
 
-      // Phần 1: Đảo câu hỏi & Đảo đáp án
+      // Phần 1: Đảo câu hỏi & Đảo phương án
       const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
       currentExam.p1 = shuffle(p1).map(q => {
         const originalCorrectIndex = letterMap[(q['Đáp án đúng'] || 'A').toUpperCase()] || 0;
@@ -310,7 +320,7 @@
         };
       });
 
-      // Phần 2: Giữ nguyên thứ tự câu và các ý
+      // Phần 2: Giữ nguyên thứ tự câu và các nhận định
       currentExam.p2 = p2.map(q => {
         const rawAns = (q['Đáp án đúng'] || '').replace(/\s+/g, '').toUpperCase().split(/[,;\-]/);
         return {
@@ -338,11 +348,11 @@
 
     function renderUI() {
       const container = document.getElementById("quiz-container");
-      container.innerHTML = "";
+      let htmlBuffer = "";
 
-      // 1. Render Phần I
+      // 1. Dựng Phần I
       if (currentExam.p1.length > 0) {
-        container.innerHTML += `<div class="section-header">PHẦN I: Câu trắc nghiệm nhiều phương án lựa chọn (${currentExam.p1.length} câu)</div>`;
+        htmlBuffer += `<div class="section-header">PHẦN I: Câu trắc nghiệm nhiều phương án lựa chọn (${currentExam.p1.length} câu)</div>`;
         currentExam.p1.forEach((q, idx) => {
           const content = cleanQuestionTitle(q.question);
           let opts = q.options.map((opt, oIdx) => `
@@ -352,21 +362,19 @@
             </label>
           `).join('');
 
-          container.innerHTML += `
-            <div class="question-card">
+          htmlBuffer += `
+            <div class="question-card" id="p1-card-${idx}">
               <div class="question-title">Câu ${idx + 1}: ${content}</div>
               <div class="options">${opts}</div>
-              <div class="explanation" id="p1-exp-${idx}">
-                <strong>Đáp án câu ${idx + 1} (${String.fromCharCode(65 + q.answer)}):</strong> ${cleanExplanation(q.explanation)}
-              </div>
+              <div id="p1-exp-placeholder-${idx}"></div>
             </div>
           `;
         });
       }
 
-      // 2. Render Phần II
+      // 2. Dựng Phần II
       if (currentExam.p2.length > 0) {
-        container.innerHTML += `<div class="section-header">PHẦN II: Câu trắc nghiệm Đúng/Sai (${currentExam.p2.length} câu - Giữ nguyên thứ tự)</div>`;
+        htmlBuffer += `<div class="section-header">PHẦN II: Câu trắc nghiệm Đúng/Sai (${currentExam.p2.length} câu - Giữ nguyên thứ tự)</div>`;
         currentExam.p2.forEach((q, idx) => {
           const content = cleanQuestionTitle(q.question);
           let rows = q.items.map((item, iIdx) => `
@@ -377,24 +385,22 @@
             </tr>
           `).join('');
 
-          container.innerHTML += `
+          htmlBuffer += `
             <div class="question-card" id="p2-card-${idx}">
               <div class="question-title">Câu ${idx + 1}: ${content}</div>
               <table class="tf-table">
                 <tr><th>Lệnh hỏi / Nhận định</th><th>Đúng</th><th>Sai</th></tr>
                 ${rows}
               </table>
-              <div class="explanation" id="p2-exp-${idx}">
-                <strong>Lời giải câu ${idx + 1}:</strong> ${cleanExplanation(q.explanation)}
-              </div>
+              <div id="p2-exp-placeholder-${idx}"></div>
             </div>
           `;
         });
       }
 
-      // 3. Render Phần III
+      // 3. Dựng Phần III
       if (currentExam.p3.length > 0) {
-        container.innerHTML += `<div class="section-header">PHẦN III: Câu trắc nghiệm trả lời ngắn (${currentExam.p3.length} câu)</div>`;
+        htmlBuffer += `<div class="section-header">PHẦN III: Câu trắc nghiệm trả lời ngắn (${currentExam.p3.length} câu)</div>`;
         currentExam.p3.forEach((q, idx) => {
           let qTitle = q.question;
           if (qTitle.includes('\n')) {
@@ -406,41 +412,42 @@
             qTitle = `<strong>Câu ${idx + 1}:</strong> ${cleanQuestionTitle(qTitle)}`;
           }
 
-          container.innerHTML += `
+          htmlBuffer += `
             <div class="question-card" id="p3-card-${idx}">
               <div class="question-title">${qTitle}</div>
               <div>
                 <strong>Đáp án của bạn: </strong>
                 <input type="text" class="short-input" id="p3-input-${idx}" placeholder="Nhập số/kết quả...">
               </div>
-              <div class="explanation" id="p3-exp-${idx}">
-                <strong>Đáp án đúng:</strong> ${q.answer} <br>
-                <strong>Lời giải câu ${idx + 1}:</strong> ${cleanExplanation(q.explanation)}
-              </div>
+              <div id="p3-exp-placeholder-${idx}"></div>
             </div>
           `;
         });
       }
 
-      if (window.renderMathInElement) {
-        renderMathInElement(container, {
-          delimiters: [
-            { left: "$$", right: "$$", display: true },
-            { left: "$", right: "$", display: false }
-          ]
-        });
-      }
+      // Gán một lần duy nhất vào DOM để tối ưu hiệu năng
+      container.innerHTML = htmlBuffer;
+      renderMath();
     }
 
     function submitQuiz() {
       let scoreP1 = 0, scoreP2 = 0, scoreP3 = 0;
 
-      // 1. Chấm Phần I (4.5đ)
+      // 1. Chấm Phần I (4.5 điểm)
       const p1Weight = currentExam.p1.length > 0 ? (4.5 / currentExam.p1.length) : 0;
       currentExam.p1.forEach((q, idx) => {
         const selected = document.querySelector(`input[name="p1_${idx}"]:checked`);
-        const expElem = document.getElementById(`p1-exp-${idx}`);
-        if (expElem) expElem.style.display = "block";
+        const correctLetter = String.fromCharCode(65 + q.answer);
+        
+        // Tạo lời giải động khi nộp bài
+        const expBox = document.getElementById(`p1-exp-placeholder-${idx}`);
+        if (expBox) {
+          expBox.innerHTML = `
+            <div class="explanation">
+              <strong>Đáp án câu ${idx + 1} (${correctLetter}):</strong> ${cleanExplanation(q.explanation)}
+            </div>
+          `;
+        }
 
         const correctLabel = document.getElementById(`p1-label-${idx}-${q.answer}`);
         if (correctLabel) correctLabel.classList.add("correct");
@@ -456,11 +463,17 @@
         }
       });
 
-      // 2. Chấm Phần II (4.0đ)
+      // 2. Chấm Phần II (4.0 điểm theo quy chế Bộ GD&ĐT)
       const tfPoints = [0, 0.1, 0.25, 0.5, 1.0];
       currentExam.p2.forEach((q, idx) => {
-        const expElem = document.getElementById(`p2-exp-${idx}`);
-        if (expElem) expElem.style.display = "block";
+        const expBox = document.getElementById(`p2-exp-placeholder-${idx}`);
+        if (expBox) {
+          expBox.innerHTML = `
+            <div class="explanation">
+              <strong>Lời giải câu ${idx + 1}:</strong> ${cleanExplanation(q.explanation)}
+            </div>
+          `;
+        }
 
         let correctCount = 0;
         q.items.forEach((_, iIdx) => {
@@ -473,17 +486,36 @@
         scoreP2 += tfPoints[correctCount];
       });
 
-      // 3. Chấm Phần III (1.5đ)
+      // 3. Chấm Phần III (1.5 điểm)
       const p3Weight = currentExam.p3.length > 0 ? (1.5 / currentExam.p3.length) : 0;
       currentExam.p3.forEach((q, idx) => {
-        const expElem = document.getElementById(`p3-exp-${idx}`);
-        if (expElem) expElem.style.display = "block";
+        const expBox = document.getElementById(`p3-exp-placeholder-${idx}`);
+        if (expBox) {
+          expBox.innerHTML = `
+            <div class="explanation">
+              <strong>Đáp án đúng:</strong> ${q.answer} <br>
+              <strong>Lời giải câu ${idx + 1}:</strong> ${cleanExplanation(q.explanation)}
+            </div>
+          `;
+        }
 
         const inputElem = document.getElementById(`p3-input-${idx}`);
-        const userAns = inputElem.value.trim().replace(',', '.');
-        const trueAns = String(q.answer).trim().replace(',', '.');
+        const userStr = inputElem.value.trim().replace(',', '.');
+        const trueStr = String(q.answer).trim().replace(',', '.');
 
-        if (userAns !== '' && userAns === trueAns) {
+        const userNum = parseFloat(userStr);
+        const trueNum = parseFloat(trueStr);
+
+        let isCorrect = false;
+        if (!isNaN(userNum) && !isNaN(trueNum)) {
+          // So sánh số học với dung sai 0.02
+          isCorrect = Math.abs(userNum - trueNum) <= 0.02;
+        } else {
+          // So sánh chuỗi trực tiếp
+          isCorrect = (userStr !== '' && userStr.toLowerCase() === trueStr.toLowerCase());
+        }
+
+        if (isCorrect) {
           scoreP3 += p3Weight;
           inputElem.style.borderColor = "var(--success)";
           inputElem.style.backgroundColor = "#dcfce7";
@@ -493,6 +525,7 @@
         }
       });
 
+      // Hiển thị tổng kết quả
       const totalScore = (scoreP1 + scoreP2 + scoreP3).toFixed(2);
       const resultBox = document.getElementById("result");
       resultBox.style.display = "block";
@@ -510,6 +543,9 @@
       submitBtn.innerText = "Đã hoàn thành";
       document.getElementById("retry-btn").style.display = "block";
       document.querySelectorAll('input').forEach(i => i.disabled = true);
+
+      // Render lại công thức toán học trong phần lời giải vừa hiển thị
+      renderMath();
     }
 
     window.onload = fetchQuestions;
