@@ -205,7 +205,13 @@
       if (!text) return '';
       return text.replace(/^Câu\s+\d+[\.:\s]*/i, '').trim();
     }
-
+// Hàm tự động xóa bỏ "Câu 2.", "Câu 2. C.", "C." cũ từ Google Sheet
+function cleanExplanation(text) {
+  if (!text) return '';
+  return text.replace(/^Câu\s*\d+[\.:\s]*([A-D]\.?)?\s*/i, '')
+             .replace(/^[A-D]\.[\s]*/i, '')
+             .trim();
+}
     function shuffle(array) {
       const arr = [...array];
       for (let i = arr.length - 1; i > 0; i--) {
@@ -348,7 +354,7 @@
             <div class="question-card">
               <div class="question-title">Câu ${idx + 1}: ${content}</div>
               <div class="options">${opts}</div>
-              <div class="explanation" id="p1-exp-${idx}"><strong>Lời giải:</strong> ${q.explanation}</div>
+            <div class="explanation"><strong>Đáp án câu ${idx + 1}:</strong> ${cleanExplanation(q.explanation)}</div>
             </div>
           `;
         });
